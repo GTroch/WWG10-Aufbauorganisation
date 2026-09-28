@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aufbauorganisation interaktiv</title>
+<style>
+:root{
+  --bg:#f6f4ef; --panel:#ffffff; --ink:#1f2328; --muted:#5d6570; --line:#9aa3ad;
+  --accent:#b3302b; --accent-soft:#f6e3e1; --blue:#2c5d8f; --blue-soft:#e3edf7;
+  --ok:#2e7d4f; --ok-soft:#e1f2e7; --bad:#b3302b; --bad-soft:#f9e1df;
+  --zentral:#7a5a00; --zentral-soft:#fff4d6; --border:#e2ddd3; --shadow:0 1px 3px rgba(0,0,0,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#16181b; --panel:#1f2226; --ink:#e8e6e1; --muted:#a3a9b1; --line:#6b737c;
+    --accent:#e0625c; --accent-soft:#3a2221; --blue:#7fb0e0; --blue-soft:#1e2c3b;
+    --ok:#6cc494; --ok-soft:#1c3226; --bad:#e0625c; --bad-soft:#3a2221;
+    --zentral:#e3c162; --zentral-soft:#352d17; --border:#33373d; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16181b; --panel:#1f2226; --ink:#e8e6e1; --muted:#a3a9b1; --line:#6b737c;
+  --accent:#e0625c; --accent-soft:#3a2221; --blue:#7fb0e0; --blue-soft:#1e2c3b;
+  --ok:#6cc494; --ok-soft:#1c3226; --bad:#e0625c; --bad-soft:#3a2221;
+  --zentral:#e3c162; --zentral-soft:#352d17; --border:#33373d; --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{background:var(--panel);border-bottom:1px solid var(--border);padding:16px}
+.head-inner{max-width:1200px;margin:0 auto;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+h1{font-size:1.35rem;margin:0}
+.sub-title{color:var(--muted);font-size:.9rem;margin:2px 0 0}
+.progress{display:flex;align-items:center;gap:10px;font-size:.9rem;color:var(--muted)}
+.bar{width:160px;height:8px;background:var(--border);border-radius:99px;overflow:hidden}
+.bar>span{display:block;height:100%;background:var(--ok);width:0;transition:width .3s}
+.layout{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:250px 1fr;gap:20px;padding:20px 16px}
+nav{position:sticky;top:12px;align-self:start;display:flex;flex-direction:column;gap:4px}
+nav button{all:unset;cursor:pointer;padding:8px 10px;border-radius:8px;font-size:.92rem;display:flex;gap:8px;align-items:flex-start;color:var(--ink)}
+nav button:hover{background:var(--panel)}
+nav button.active{background:var(--panel);box-shadow:var(--shadow);font-weight:600;outline:1px solid var(--border)}
+nav .num{min-width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;background:var(--border);font-size:.8rem;font-weight:700;flex-shrink:0}
+nav button.done .num{background:var(--ok);color:#fff}
+nav .lbl{padding-top:2px}
+main{min-width:0}
+section.task{display:none;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:22px;box-shadow:var(--shadow)}
+section.task.active{display:block}
+.tag{display:inline-block;font-size:.75rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:3px 8px;border-radius:6px}
+h2{font-size:1.3rem;margin:10px 0 6px}
+h3{font-size:1.05rem;margin:22px 0 8px}
+.auftrag{background:var(--blue-soft);border-left:4px solid var(--blue);padding:12px 14px;border-radius:8px;margin:12px 0 18px}
+.hint{font-size:.88rem;color:var(--muted)}
+.btn{cursor:pointer;border:1px solid var(--border);background:var(--panel);color:var(--ink);padding:8px 14px;border-radius:8px;font:inherit;font-size:.92rem}
+.btn:hover{border-color:var(--line)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+details.loesung{margin-top:22px;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
+details.loesung summary{cursor:pointer;padding:12px 14px;font-weight:600;list-style:none}
+details.loesung summary::before{content:"💡 "}
+details.loesung[open] summary{border-bottom:1px solid var(--border)}
+details.loesung .inner{padding:4px 16px 12px}
+textarea,input[type=text],select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;width:100%}
+textarea{min-height:110px;resize:vertical}
+.foot-actions{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:24px;padding-top:16px;border-top:1px solid var(--border)}
+
+/* Organigramm */
+.chart-wrap{overflow-x:auto;padding:10px 4px 16px;border:1px dashed var(--border);border-radius:10px;background:var(--bg)}
+.tree{min-width:max-content;margin:0 auto;display:flex;justify-content:center}
+.tree ul{padding-top:18px;position:relative;display:flex;justify-content:center;margin:0;padding-left:0}
+.tree>ul{padding-top:0}
+.tree li{list-style:none;text-align:center;position:relative;padding:18px 4px 0;display:flex;flex-direction:column;align-items:center}
+.tree li::before,.tree li::after{content:"";position:absolute;top:0;right:50%;border-top:2px solid var(--line);width:50%;height:18px}
+.tree li::after{right:auto;left:50%;border-left:2px solid var(--line)}
+.tree li:only-child::before,.tree li:only-child::after{display:none}
+.tree li:only-child{padding-top:0}
+.tree li:first-child::before,.tree li:last-child::after{border:0 none}
+.tree li:last-child::before{border-right:2px solid var(--line)}
+.tree ul ul::before{content:"";position:absolute;top:0;left:50%;border-left:2px solid var(--line);height:18px}
+.tree>ul>li:only-child{padding-top:0}
+.node{display:inline-block;background:var(--panel);border:2px solid var(--blue);border-radius:8px;padding:6px 10px;font-size:.85rem;font-weight:600;min-width:90px;max-width:170px;cursor:pointer;transition:transform .1s}
+.node:hover{transform:translateY(-1px)}
+.node.root{background:var(--blue);color:#fff}
+.node.zentral{border-style:dashed;border-color:var(--zentral);background:var(--zentral-soft)}
+.node.group{border-style:dashed;border-color:var(--zentral);background:transparent;color:var(--zentral);cursor:default}
+.node.sel{outline:3px solid var(--accent);outline-offset:2px}
+.node.found{background:var(--ok-soft);border-color:var(--ok)}
+.node.ok-std{background:var(--blue-soft)}
+.sub{display:flex;flex-direction:column;gap:6px;margin-top:10px;position:relative;padding-left:12px}
+.sub::before{content:"";position:absolute;left:0;top:-10px;bottom:14px;border-left:2px solid var(--line)}
+.sub .node{font-weight:500;font-size:.8rem;min-width:110px;border-width:1.5px;position:relative;text-align:left}
+.sub .node::before{content:"";position:absolute;left:-14px;top:50%;width:12px;border-top:2px solid var(--line)}
+.sub.zsub .node{border-style:dashed;border-color:var(--zentral);background:var(--zentral-soft)}
+.info-panel{margin-top:12px;padding:12px 14px;border-radius:8px;background:var(--blue-soft);min-height:48px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.82rem;color:var(--muted);margin:8px 0}
+.legend span::before{content:"";display:inline-block;width:14px;height:10px;border:2px solid var(--blue);border-radius:3px;margin-right:6px;vertical-align:middle}
+.legend span.z::before{border-style:dashed;border-color:var(--zentral);background:var(--zentral-soft)}
+
+/* Sortierübung */
+.pool,.bucket{min-height:60px;border:2px dashed var(--border);border-radius:10px;padding:10px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start}
+.pool{background:var(--bg);margin-bottom:12px}
+.buckets{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.bucket-wrap h4{margin:0 0 6px;font-size:.9rem}
+.bucket{min-height:110px;cursor:pointer}
+.bucket.target{border-color:var(--blue);background:var(--blue-soft)}
+.chip{cursor:grab;user-select:none;padding:6px 10px;border-radius:99px;background:var(--panel);border:1.5px solid var(--line);font-size:.85rem}
+.chip.selected{outline:3px solid var(--blue);outline-offset:1px}
+.chip.right{border-color:var(--ok);background:var(--ok-soft)}
+.chip.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.feedback{font-weight:600;margin:8px 0}
+.feedback.good{color:var(--ok)} .feedback.bad{color:var(--bad)}
+
+/* Quiz */
+.q{border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin:10px 0}
+.q p{margin:0 0 8px}
+.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opt{cursor:pointer;border:1.5px solid var(--border);background:var(--bg);color:var(--ink);padding:6px 12px;border-radius:8px;font:inherit;font-size:.9rem}
+.opt.right{border-color:var(--ok);background:var(--ok-soft)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.explain{font-size:.9rem;margin-top:8px;color:var(--muted)}
+
+/* Karten */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.card{border:1px solid var(--border);border-radius:12px;padding:14px;background:var(--bg)}
+.card h4{margin:0 0 6px}
+.reveal{cursor:pointer}
+.reveal .back{display:none}
+.reveal.open .back{display:block}
+.reveal.open .front-hint{display:none}
+.front-hint{color:var(--blue);font-size:.85rem}
+
+/* Tabellen */
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{border:1px solid var(--border);padding:8px;vertical-align:top;text-align:left}
+th{background:var(--bg)}
+td.cell-reveal{cursor:pointer;color:var(--blue)}
+td.cell-reveal.open{color:var(--ink);cursor:default}
+.table-scroll{overflow-x:auto}
+.editor-grid{display:grid;grid-template-columns:minmax(240px,320px) minmax(0,1fr);gap:16px}
+.editor-grid>div{min-width:0}
+.node-list{list-style:none;padding:0;margin:8px 0;font-size:.88rem;max-height:260px;overflow:auto}
+.node-list li{display:flex;justify-content:space-between;gap:6px;padding:4px 6px;border-bottom:1px solid var(--border)}
+.node-list button{all:unset;cursor:pointer;color:var(--bad);font-weight:700;padding:0 6px}
+.check-list label{display:flex;gap:8px;padding:6px 0;align-items:flex-start}
+.matrix{display:grid;grid-template-columns:110px repeat(3,1fr);gap:4px;font-size:.78rem;text-align:center}
+.matrix div{padding:6px 4px;border-radius:6px;background:var(--blue-soft)}
+.matrix .h{background:var(--accent-soft);font-weight:700}
+.matrix .c{background:var(--bg);border:1px dashed var(--line)}
+@media (max-width:860px){
+  .layout{grid-template-columns:1fr}
+  nav{position:static;flex-direction:row;overflow-x:auto;padding-bottom:4px}
+  nav .lbl{display:none}
+  nav button{padding:6px}
+  .editor-grid{grid-template-columns:minmax(0,1fr)}
+  section.task{padding:16px}
+}
+@media print{
+  header .progress, nav, .foot-actions, .no-print{display:none!important}
+  .layout{display:block}
+  section.task{box-shadow:none;border:0}
+  details.loesung{display:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="head-inner">
+    <div>
+      <h1>Aufbauorganisation von Unternehmen</h1>
+      <p class="sub-title">Interaktive Lernseite zu den Materialien M1–M6</p>
+    </div>
+    <div class="progress" title="Erledigte Aufgaben">
+      <span id="progTxt">0 von 14 erledigt</span>
+      <div class="bar"><span id="progBar"></span></div>
+      <button class="btn" id="themeBtn" type="button" aria-label="Hell/Dunkel umschalten">◐</button>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <nav id="nav" aria-label="Aufgaben"></nav>
+  <main id="main">
+
+<!-- ============ AUFGABE 1 ============ -->
+<section class="task" data-id="1" data-title="Aufbau des Fleischproduzenten">
+  <span class="tag">Aufgabe 1 · M1</span>
+  <h2>Den Aufbau des Fleischproduzenten beschreiben</h2>
+  <div class="auftrag">Beschreiben Sie den Aufbau des Fleischproduzenten (M1).</div>
+  <p class="hint">Vereinfachtes Organigramm nach M1. <b>Klicke auf die Kästchen</b>, um mehr über den jeweiligen Bereich zu erfahren.</p>
+  <div class="chart-wrap"><div class="tree" id="chartM1"></div></div>
+  <div class="info-panel" id="infoM1">Tipp: Beginne oben und arbeite dich Ebene für Ebene nach unten.</div>
+
+  <h3>Übung: Welche Abteilung gehört zu welchem Funktionsbereich?</h3>
+  <p class="hint">Ziehe die Abteilungen in den passenden Bereich, oder tippe erst eine Abteilung und dann den Bereich an.</p>
+  <div class="sorter" id="sortA1"></div>
+
+  <h3>Deine Beschreibung</h3>
+  <textarea placeholder="Das Unternehmen ist … aufgebaut. An der Spitze steht … Darunter …"></textarea>
+  <p class="hint">Satzbausteine: <i>hierarchisch · untergeordnet · Funktionsbereich · untergliedert sich in · Instanz · Stelle</i></p>
+
+  <details class="loesung"><summary>Lösungshinweis anzeigen</summary><div class="inner">
+    <p>Das Unternehmen weist eine <b>hierarchische Organisationsstruktur</b> auf. Der Geschäftsleitung sind die vier Funktionsbereiche „Einkauf“, „Absatz“, „Produktion“ und „Verwaltung“ untergeordnet, die sich in weitere Unterbereiche/Abteilungen aufspalten.</p>
+    <p>Der Produktionsbereich unterteilt sich nach Produktgruppen („Klassisch“ und „Bio“), der Absatzbereich nach „Werbung“ und „Marktforschung“ sowie dem eigentlichen Vertrieb mit „Verkauf“ und „Versand“. Der Einkauf gliedert sich in die „Beschaffung“ und verwaltet offenbar auch das „Kühllager“. Neben den drei klassischen Bereichen Einkauf, Produktion und Absatz steht die Verwaltung mit Buchhaltung, Personal- und IT-Abteilung.</p>
+    <p>An der Spitze steht die Geschäftsleitung. Damit entspricht das Unternehmen weitgehend der <b>funktionalen Organisationsstruktur</b>.</p>
+  </div></details>
+</section>
+
+<!-- ============ AUFGABE 2 ============ -->
+<section class="task" data-id="2" data-title="Grundlegende Funktionsbereiche">
+  <span class="tag">Aufgabe 2 · Recherche</span>
+  <h2>Grundlegende Funktionsbereiche recherchieren</h2>
+  <div class="auftrag">Recherchieren Sie im Internet nach den grundlegenden Funktionsbereichen, die in den meisten Unternehmen zu finden sind.</div>
+  <p>Bei deiner Recherche wirst du viele verschiedene Begriffe finden – oft meinen sie dasselbe. Ordne die Begriffe den <b>Grundbereichen</b> zu.</p>
+  <div class="sorter" id="sortA2"></div>
+  <h3>Meine Rechercheergebnisse</h3>
+  <textarea placeholder="Quelle (URL) – gefundene Funktionsbereiche …"></textarea>
+  <details class="loesung"><summary>Lösungshinweis anzeigen</summary><div class="inner">
+    <p>Es finden sich unterschiedlichste Unterteilungen und Bezeichnungen. Zu den grundlegenden Funktionsbereichen gehören z. B. Beschaffung, Einkauf, Produktion, Fertigung, Vertrieb, Absatz, Marketing, Finanzierung, Finanzen, Unternehmensleitung, Management, Controlling, Rechnungswesen, Buchhaltung, Personalwesen, Verwaltung, Information, Forschung und Entwicklung sowie Logistik.</p>
+    <p>Je nach Definition sind neben den drei Grundbereichen <b>Beschaffung, Produktion und Absatz</b> weitere, synonym genutzte Bezeichnungen zu finden. Auch der Bereich „Verwaltung“ lässt sich in Unterbereiche aufgliedern, die je nach Quelle ebenfalls als Funktionsbereiche bezeichnet werden.</p>
+    <p class="hint">Hinweis zur Übung: „Logistik“ und „Forschung und Entwicklung“ lassen sich nicht immer eindeutig zuordnen. Logistik betrifft Beschaffung und Absatz; F&amp;E wird häufig als eigener Bereich geführt.</p>
+  </div></details>
+</section>
+
+<!-- ============ AUFGABE 3 ============ -->
+<section class="task" data-id="3" data-title="Notwendigkeit der Aufbauorganisation">
+  <span class="tag">Aufgabe 3</span>
+  <h2>Warum braucht ein Unternehmen eine Aufbauorganisation?</h2>
+  <div class="auftrag">Begründen Sie die Notwendigkeit einer Aufbauorganisation für ein Unternehmen.</div>
+  <p>Was läuft in diesen Fällen schief? Wähle aus, welche Aufgabe der Aufbauorganisation hier nicht erfüllt ist.</p>
+  <div id="quizA3"></div>
+  <h3>Deine Begründung</h3>
+  <textarea placeholder="Eine Aufbauorganisation ist notwendig, weil …"></textarea>
+  <details class="loesung"><summary>Lösungshinweis anzeigen</summary><div class="inner">
+    <p>Die Aufbauorganisation regelt die <b>Kompetenz- und Kommunikationsstruktur</b> im Unternehmen. Beide Bereiche sind für das Funktionieren eines Betriebs enorm wichtig:</p>
+    <ul>
+      <li>Es muss klar sein, welche Instanz innerhalb der Hierarchie <b>für welche Entscheidungen zuständig</b> ist.</li>
+      <li>Es muss geregelt sein, <b>wer welche Informationen erhält oder weiterleiten muss</b>, damit Entscheidungen nach bestmöglichem Informationsstand getroffen werden können.</li>
+    </ul>
+    <p>Unklare Zuständigkeiten oder der Verlust wichtiger Informationen in der Kommunikationskette hemmen den Unternehmenserfolg.</p>
+  </div></details>
+</section>
+
+<!-- ============ AUFGABE 4 ============ -->
+<section class="task" data-id="4" data-title="Unternehmen aus der Region">
+  <span class="tag">Aufgabe 4 · Recherche</span>
+  <h2>Unternehmen aus der Region untersuchen</h2>
+  <div class="auftrag">Recherchieren Sie mithilfe des Internets nach Unternehmen aus Ihrer Region und prüfen Sie, ob diese eine ähnliche funktionale Gliederung wie die des Produzenten aus M1 aufweisen.</div>
+  <p class="hint">Tipp: Organigramme finden sich häufig auf der Website unter „Über uns“, „Unternehmen“ oder in <b>Geschäftsberichten</b>.</p>
+  <div class="table-scroll">
+  <table id="tblA4">
+    <thead><tr><th>Unternehmen</th><th>Branche / Größe</th><th>Einkauf</th><th>Produktion</th><th>Absatz</th><th>Verwaltung</th><th>Ähnlich wie M1?</th><th class="no-print"></th></tr></thead>
+    <tbody></tbody>
+  </table>
+  </div>
+  <div class="row no-print">
+    <button class="btn primary" id="addA4" type="button">+ Unternehmen hinzufügen</button>
+    <button class="btn" id="csvA4" type="button">Tabelle als CSV speichern</button>
+  </div>
+  <details class="loesung"><summary>Lösungshinweis anzeigen</summary><div class="inner">
+    <p>Je nach Region sind unterschiedlichste Beispiele möglich. In der Regel findet sich die funktionale Organisationsstruktur bei <b>klein- und ggf. mittelständischen Unternehmen</b>, z. B. Handwerksbetrieben. Häufig findet man Organigramme von Unternehmen in den Geschäftsberichten.</p>
+  </div></details>
+</section>
+
+<!-- ============ AUFGABE 5 ============ -->
+<section class="task" data-id="5" data-title="Organigramm Fluid Engineering AG">
+  <span class="tag">Aufgabe 5 · M2</span>
+  <h2>Organigramm der Fluid Engineering AG erstellen</h2>
+  <div class="auftrag">Erstellen Sie das Organigramm der Fluid Engineering AG. Nutzen Sie hierfür z. B. die SmartArts in einem Office-Programm oder die App im QR-Code (M2).</div>
+  <p>Du kannst das Organigramm auch direkt hier erstellen. Entnimm die Bezeichnungen dem Text in <b>M2</b>.</p>
+  <div class="editor" id="editorA5"></div>
+  <details class="loesung"><summary>Lösungshinweis anzeigen</summary><div class="inner">
+    <p>Im Lösungsheft ist das Organigramm eine eigene Darstellung. Achte bei der Kontrolle auf folgende Merkmale:</p>
+    <ul>
+      <li>An der Spitze steht die Unternehmensleitung (bei einer AG der <b>Vorstand</b>).</li>
+      <li>Darunter liegen die <b>vier Hauptgeschäftsfelder</b> (Bezeichnungen aus M2), also eine Gliederung nach Objekten bzw. Sparten.</li>
+      <li>Als <b>ausgelagerte Bereiche (Zentralbereiche)</b> kommen hinzu: <b>Finanzen</b> (Rechnungswesen und Finanzierung), <b>Entwicklung</b> und <b>Market &amp; Technology</b>.</li>
+    </ul>
+    <p class="row"><button class="btn" type="button" id="loadSkeleton">Lösungsgerüst in den Editor laden</button></p>
+  </div></details>
+</section>
+
+<!-- ============ AUFGABE 6 ============ -->
+<section class="task" data-id="6" data-title="Ausgelagerte Abteilungen">
+  <span class="tag">Aufgabe 6 · M2</span>
+  <h2>Die Sinnhaftigkeit ausgelagerter Abteilungen</h2>
+  <div class="auftrag">Erläutern Sie die Sinnhaftigkeit von ausgelagerten Abteilungen (M2).</div>
+  <p>Klicke auf die Karten, um sie aufzudecken.</p>
+  <div class="cards">
+    <div class="card reveal"><h4>Was sind ausgelagerte Abteilungen?</h4><p class="front-hint">Aufdecken ▸</p><div class="back">Bereiche, die ihre Dienste als <b>Querschnittsfunktionen</b> für alle anderen Organisationseinheiten anbieten, z. B. Rechnungswesen oder Personal.</div></div>
+    <div class="card reveal"><h4>Welche sind es bei der Fluid Engineering AG?</h4><p class="front-hint">Aufdecken ▸</p><div class="back"><b>Finanzen</b> (Rechnungswesen und Finanzierungsströme), <b>Entwicklung</b> (Innovationen für alle vier Geschäftsfelder) und <b>Market &amp; Technology</b> (schätzt künftige technische Entwicklungen ab).</div></div>
+    <div class="card reveal"><h4>Vorteil 1: keine Doppelarbeit</h4><p class="front-hint">Aufdecken ▸</p><div class="back">Ohne Zentralbereich bräuchte jedes Geschäftsfeld eine eigene Buchhaltung oder Entwicklung. Die Auslagerung vermeidet solche <b>Redundanzen</b>.</div></div>
+    <div class="card reveal"><h4>Vorteil 2: Synergieeffekte</h4><p class="front-hint">Aufdecken ▸</p><div class="back">Leistungen werden <b>übergreifend für alle Abteilungen</b> angeboten. Eine Innovation der Entwicklung kann z. B. mehreren Geschäftsfeldern nützen.</div></div>
+  </div>
+  <h3>Mini-Check: Welche Abteilung eignet sich als Zentralbereich?</h3>
+  <div id="quizA6"></div>
+  <details class="loesung"><summary>Lösungshinweis anzeigen</summary><div class="inner">
+    <p>Ausgelagerte Abteilungen bieten ihre Dienste als „Querschnittsfunktionen“ für die anderen Organisationseinheiten an. Typisch sind das Rechnungswesen, das die Buchhaltung für die verschiedenen Funktionsbereiche oder Geschäftsfelder übernimmt, oder das Personalwesen, das qualifizierte Mitarbeiter beschafft.</p>
+    <p>Bei der Fluid Engineering AG sind ausgelagert: der <b>Finanzbereich</b> (Rechnungswesen und Koordination der Finanzierungsströme), der <b>Entwicklungsbereich</b>, dessen Innovationen den vier Hauptgeschäftsfeldern zugutekommen, und die Abteilung <b>„Market &amp; Technology“</b>, die zukünftige technische Entwicklungen abzuschätzen versucht.</p>
+    <p>Durch solche Auslagerungen werden <b>Redundanzen vermieden</b> und Leistungen <b>übergreifend</b> angeboten, was zu <b>Synergieeffekten</b> führen kann.</p>
+  </div></details>
+</section>
+
+<!-- ============ AUFGABE 7 ============ -->
+<section class="task" data-id="7" data-title="Vergleich M1 und M2">
+  <span class="tag">Aufgabe 7 · M1, M2</span>
+  <h2>Die beiden Unternehmen vergleichen</h2>
+  <div class="auftrag">Vergleichen Sie die Aufbauorganisation der beiden Unternehmen (M1, M2) und erläutern Sie mögliche Gründe für die jeweilige Vorteilhaftigkeit der gewählten Organisationsstruktur.</div>
+  <p>Überlege zuerst selbst und <b>klicke dann auf eine Zelle</b>, um deinen Gedanken zu überprüfen.</p>
+  <div class="table-scroll">
+  <table id="tblA7">
+    <thead><tr><th>Kriterium</th><th>Fleischproduzent (M1)</th><th>Fluid Engineering AG (M2)</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  </div>
+  <details class="loesung"><summary>Lösungshinweis anzeigen</summary><div class="inner">
+    <p>Der Fleischproduzent ist <b>funktional</b> (nach Verrichtungen: Einkauf, Produktion, Absatz, Verwaltung) gegliedert, die Fluid Engineering AG <b>divisional</b> (nach Geschäftsfeldern/Sparten) mit mehreren Zentralbereichen.</p>
+    <p><b>Gründe für M1:</b> Ein mittelständischer Betrieb mit einem recht einheitlichen Produktprogramm (Fleischwaren) profitiert von Spezialisierung, klaren Zuständigkeiten und kurzen Entscheidungswegen. Eine Aufteilung in Sparten würde Abteilungen unnötig verdoppeln.</p>
+    <p><b>Gründe für M2:</b> Eine AG mit vier unterschiedlichen Geschäftsfeldern bedient verschiedene Märkte und Kunden. Sparten ermöglichen Marktnähe und eigene Ergebnisverantwortung und entlasten den Vorstand. Querschnittsaufgaben (Finanzen, Entwicklung, Market &amp; Technology) werden zentral gebündelt.</p>
+    <p>Beide Beispiele zeigen: Die <b>Idealtypen</b> der funktionalen und divisionalen Organisation existieren in der Realität kaum. Sie werden individuell angepasst.</p>
+  </div></details>
+</section>
+
+<!-- ============ AUFGABE 8 ============ -->
+<section class="task" data-id="8" data-title="Bauunternehmen analysieren">
+  <span class="tag">Aufgabe 8 · M3</span>
+  <h2>Das Bauunternehmen analysieren</h2>
+  <div class="auftrag">Analysieren Sie den Aufbau des Bauunternehmens aus M3 und finden Sie mögliche Gründe für die Abweichungen vom idealtypischen funktionalen Schema.</div>
+  <p><b>Detektiv-Auftrag:</b> Das idealtypische funktionale Schema lautet <i>Leitung → Beschaffung · Produktion · Absatz · Verwaltung</i>. Klicke auf die Bereiche, die davon abweichen. Gefunden: <b id="foundCount">0</b> von <b id="foundTotal">5</b>.</p>
+  <div class="legend"><span>Linienbereich</span><span class="z">Zentralbereich / ausgelagert</span></div>
+  <div class="chart-wrap"><div class="tree" id="chartM3"></div></div>
+  <div class="info-panel" id="infoM3">Klicke auf ein Kästchen.</div>
+  <p class="hint">Vereinfachte Darstellung nach den Lösungshinweisen. Vergleiche mit dem Original in M3.</p>
+  <details class="loesung"><summary>Lösungshinweis anzeigen</summary><div class="inner">
+    <p>Das Unternehmen weicht deutlich vom idealtypischen funktionalen Schema (Beschaffung, Produktion, Absatz, Leitung und Verwaltung) ab, die funktionale Struktur scheint aber durch: „Auftragsakquisition“ entspricht weitgehend dem Absatz, die „Kaufmännische Abteilung“ der Verwaltung.</p>
+    <ul>
+      <li><b>Hoch- und Tiefbau:</b> Die Unterteilung der Produktion ist sinnvoll, weil völlig unterschiedliche „Produkte“ entstehen (Gebäude bzw. Straßen, Kanäle, Leitungen). Planung, Maschinen und Qualifikation der Mitarbeiter unterscheiden sich: im Hochbau Kranführer und Maurer, im Straßenbau Walze und Teermaschine.</li>
+      <li><b>Zentralbereiche</b> sind sinnvoll, wenn sie keinem Bereich direkt zugeordnet werden können bzw. Leistungen für alle erbringen. Die „Werkstatt“ wartet vermutlich alle Werkzeuge und Maschinen; „Sanierung und Garantien“ kann ein hoch spezialisiertes Team sein, das Schäden im Hoch- und Tiefbau nachbessert.</li>
+      <li>Die <b>Kaufmännische Abteilung</b> umfasst, anders als eine allgemeine Verwaltung, nicht das Personalwesen: „Personal“ ist an die Geschäftsführung ausgelagert, „Aus- und Weiterbildung“ ist ein eigener Zentralbereich.</li>
+      <li>Die Zuordnung von <b>Personal und Finanzen an die Geschäftsführung</b> kann damit begründet sein, dass diese wichtigen Bereiche direkt der Kontrolle der Unternehmensleitung unterstehen sollen.</li>
+    </ul>
+  </div></details>
+</section>
+
+<!-- ============ AUFGABE 9 ============ -->
+<section class="task" data-id="9" data-title="Logistik-Dienstleister analysieren">
+  <span class="tag">Aufgabe 9 · M4</span>
+  <h2>Den Logistik-Dienstleister analysieren</h2>
+  <div class="auftrag">Analysieren Sie den Aufbau des Logistik-Dienstleisters und erläutern Sie, welche unterschiedlichen Gliederungskriterien dabei zum Einsatz kommen (M4).</div>
+  <div class="chart-wrap"><div class="tree" id="chartM4"></div></div>
+  <div class="info-panel" id="infoM4">Klicke auf ein Kästchen.</div>
+  <p class="hint">Vereinfachte Darstellung nach den Lösungshinweisen. Vergleiche mit dem Original in M4.</p>
+  <h3>Welches Gliederungskriterium wird hier jeweils verwendet?</h3>
+  <div id="critA9"></div>
+  <div class="row"><button class="btn primary" id="checkA9" type="button">Prüfen</button><span class="feedback" id="fbA9"></span></div>
+  <details class="loesung"><summary>Lösungshinweis anzeigen</summary><div class="inner">
+    <p>Hier scheint das <b>divisionale Prinzip nach Regionen</b> (regional, national, international) mit einer <b>funktionsähnlichen Unterstruktur</b> („Akquise und Kalkulation“, „Auftragsbearbeitung“, „Disposition“, „Lager“) kombiniert worden zu sein. Daneben gibt es verschiedene Zentralbereiche (EDV, Qualitätsmanagement usw.).</p>
+    <p>Der „Geschäftsbereich International“ wird zusätzlich nach dem <b>Transportmedium</b> unterschieden (Schwertransport → Lkw, Verschiffung → Containerschiff, Luftfracht → Flugzeug). Hier sind vermutlich detaillierte Kenntnisse der jeweiligen Gegebenheiten nötig, sodass eine abweichende Gliederung sinnvoll ist. Regional und national ist wohl immer der Lkw das Transportmittel.</p>
+    <p>Die ausgelagerten Zentralbereiche („Rechtsabteilung“, „Qualitätsmanagement“, „EDV“) arbeiten bereichsübergreifend und sollten daher nicht an eine einzelne Sparte gekoppelt werden.</p>
+    <p>Anders als das Bauunternehmen stellt der Logistik-Dienstleister kein physisches Produkt her und braucht daher keinen Produktionsbereich. Er gliedert sich nach den Regionen, in die Waren geliefert werden.</p>
+  </div></details>
+</section>
+
+<!-- ============ AUFGABE 10 ============ -->
+<section class="task" data-id="10" data-title="Aussagekraft von Organigrammen">
+  <span class="tag">Aufgabe 10</span>
+  <h2>Die Aussagekraft von Organigrammen</h2>
+  <div class="auftrag">Erläutern Sie, inwiefern die Aussagekraft von Organigrammen über das jeweilige Unternehmen trotz ihrer Übersichtlichkeit dennoch beschränkt ist.</div>
+  <p>Sortiere die Aussagen: Was leistet ein Organigramm, und wo liegen seine Grenzen?</p>
+  <div class="sorter" id="sortA10"></div>
+  <details class="loesung"><summary>Lösungshinweis anzeigen</summary><div class="inner">
+    <p>Organigramme zeigen den <b>Aufbau, die Struktur und die Aufgabenverteilung</b> eines Unternehmens. Sie werden nach außen kommuniziert, z. B. gegenüber Investoren und Bewerbern, und sind eine wichtige Grundlage für die Abläufe im Unternehmen, etwa wenn diese erfasst und verbessert werden sollen.</p>
+    <p><b>Grenzen:</b></p>
+    <ul>
+      <li>Bei sehr großen und/oder dynamischen Unternehmen sind starke <b>Vereinfachungen</b> nötig, wodurch Details verloren gehen.</li>
+      <li>Durch den ständigen Wandel ist das Organigramm <b>nicht immer aktuell</b>.</li>
+      <li>Einzelne <b>Mitarbeiter</b> kommen oft nicht vor. Es bleibt unklar, wer im Detail wofür zuständig ist.</li>
+      <li>Der <b>Kunde</b> fehlt. Eigentlich sollten alle Angebote auf den „König Kunde“ ausgerichtet sein; dieser wichtigste Fokus geht in der Darstellung verloren.</li>
+    </ul>
+  </div></details>
+</section>
+
+<!-- ============ AUFGABE 11a ============ -->
+<section class="task" data-id="11a" data-title="Grundtypen zuordnen">
+  <span class="tag">Aufgabe 11 a · M5</span>
+  <h2>Unternehmen den vier Grundtypen zuordnen</h2>
+  <div class="auftrag">Ordnen Sie die in diesem Kapitel dargestellten Unternehmen je einem der vier Grundtypen begründet zu (M5).</div>
+  <div class="cards" style="margin-bottom:14px">
+    <div class="card"><h4>Funktional</h4>Gliederung nach <b>Verrichtungen</b> (Einkauf, Produktion, Absatz …)</div>
+    <div class="card"><h4>Divisional (Sparten)</h4>Gliederung nach <b>Objekten</b> (Produkten, Regionen, Kundengruppen)</div>
+    <div class="card"><h4>Projektorganisation</h4>Gliederung nach <b>Aufträgen</b>, zeitlich begrenzt</div>
+    <div class="card"><h4>Matrixorganisation</h4><b>Mehrdimensional</b>: Funktion und Objekt gleichzeitig</div>
+  </div>
+  <div class="table-scroll">
+  <table id="tblA11">
+    <thead><tr><th>Unternehmen</th><th>Grundtyp</th><th>Begründung</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  </div>
+  <div class="row"><button class="btn primary" id="checkA11" type="button">Prüfen</button><span class="feedback" id="fbA11"></span></div>
+  <details class="loesung"><summary>Lösungshinweis anzeigen</summary><div class="inner">
+    <ul>
+      <li><b>Fleischproduzent (M1):</b> funktionale Organisation</li>
+      <li><b>Fluid Engineering AG (M2):</b> divisionale Organisation mit mehreren Zentralbereichen</li>
+      <li><b>Bauunternehmen (M3):</b> an die funktionale Organisation angelehnt</li>
+      <li><b>Logistik-Dienstleister (M4):</b> an die divisionale Organisation angelehnt</li>
+    </ul>
+  </div></details>
+</section>
+
+<!-- ============ AUFGABE 11b ============ -->
+<section class="task" data-id="11b" data-title="Modell und Wirklichkeit">
+  <span class="tag">Aufgabe 11 b · M5</span>
+  <h2>Warum weichen Modell und Wirklichkeit voneinander ab?</h2>
+  <div class="auftrag">Erläutern Sie mögliche Gründe für die Abweichung von Modell und Wirklichkeit (M5).</div>
+  <p>Klicke auf die Karten, nachdem du selbst drei Gründe notiert hast.</p>
+  <textarea placeholder="Grund 1: … Grund 2: … Grund 3: …"></textarea>
+  <div class="cards" style="margin-top:12px">
+    <div class="card reveal"><h4>Grund 1</h4><p class="front-hint">Aufdecken ▸</p><div class="back">Die jeweiligen <b>Güter und Dienstleistungen</b> der Unternehmen, z. B. Hoch- und Tiefbau beim Bauunternehmen oder keine Produktion beim Logistiker.</div></div>
+    <div class="card reveal"><h4>Grund 2</h4><p class="front-hint">Aufdecken ▸</p><div class="back"><b>Organisatorische Gründe</b>, z. B. infolge der <b>Unternehmensgröße</b>.</div></div>
+    <div class="card reveal"><h4>Grund 3</h4><p class="front-hint">Aufdecken ▸</p><div class="back"><b>Historisch gewachsene Strukturen</b>, die nie grundlegend umgebaut wurden.</div></div>
+  </div>
+  <details class="loesung"><summary>Lösungshinweis anzeigen</summary><div class="inner">
+    <p>Abweichungen treten in der <b>Benennung</b> der Teilbereiche sowie in der <b>Untergliederung</b> auf. Ursachen können die jeweiligen Güter und Dienstleistungen der Unternehmen sein oder organisatorische Gründe, z. B. infolge der Unternehmensgröße. Auch historisch gewachsene Strukturen können zu Abweichungen führen.</p>
+  </div></details>
+</section>
+
+<!-- ============ AUFGABE 12 ============ -->
+<section class="task" data-id="12" data-title="Fehlende Grundtypen">
+  <span class="tag">Aufgabe 12 · M5 · Recherche</span>
+  <h2>Beispiele für die nicht abgedeckten Grundtypen</h2>
+  <div class="auftrag">Recherchieren Sie im Internet nach Beispielen für die nicht abgedeckten Grundtypen der Aufbauorganisation (M5).</div>
+  <p>Die Unternehmen M1–M4 sind funktional oder divisional organisiert. Es fehlen also zwei Grundtypen:</p>
+  <div class="cards">
+    <div class="card">
+      <h4>Gliederung nach Aufträgen: Projektorganisation</h4>
+      <p class="hint">Für eine begrenzte Zeit wird ein Team für einen Auftrag gebildet.</p>
+      <div class="chart-wrap"><div class="tree" id="chartProj"></div></div>
+      <p><b>Suchtipp:</b> Ingenieurbüro, Architekturbüro, Unternehmensberatung</p>
+      <input type="text" placeholder="Mein Beispiel + Quelle">
+    </div>
+    <div class="card">
+      <h4>Mehrdimensionale Struktur: Matrixorganisation</h4>
+      <p class="hint">Jede Stelle hat zwei Vorgesetzte: Funktion <i>und</i> Produkt/Markt.</p>
+      <div class="matrix" aria-label="Schema Matrixorganisation">
+        <div class="h"></div><div class="h">Einkauf</div><div class="h">Produktion</div><div class="h">Vertrieb</div>
+        <div class="h">Produkt A</div><div class="c">✕</div><div class="c">✕</div><div class="c">✕</div>
+        <div class="h">Produkt B</div><div class="c">✕</div><div class="c">✕</div><div class="c">✕</div>
+        <div class="h">Produkt C</div><div class="c">✕</div><div class="c">✕</div><div class="c">✕</div>
+      </div>
+      <p><b>Suchtipp:</b> Großkonzerne mit heterogenem Produktprogramm auf verschiedenen Märkten</p>
+      <input type="text" placeholder="Mein Beispiel + Quelle">
+    </div>
+  </div>
+  <details class="loesung"><summary>Lösungshinweis anzeigen</summary><div class="inner">
+    <p>Zu recherchieren sind Beispiele für die beiden fehlenden Formen: die Gliederung nach <b>Aufträgen</b> und die <b>mehrdimensionale Struktur</b>, auch bekannt als <b>Projektorganisation</b> und <b>Matrixorganisation</b>.</p>
+    <p>Die Projektorganisation findet sich häufig bei <b>Ingenieurbüros, Architekten und Unternehmensberatungen</b>, da diese zeitlich begrenzt an einem Projekt arbeiten. Eine Matrixorganisation haben meist <b>sehr große Unternehmen</b>, die z. B. unterschiedliche Märkte mit einem heterogenen Produktprogramm bedienen.</p>
+  </div></details>
+</section>
+
+<!-- ============ AUFGABE 13 ============ -->
+<section class="task" data-id="13" data-title="Betriebserkundung">
+  <span class="tag">Aufgabe 13 · M6 · Projekt</span>
+  <h2>Betriebserkundung: Organigramm eines regionalen Unternehmens</h2>
+  <div class="auftrag">Erstellen Sie für ein klein- oder mittelständisches Unternehmen Ihrer Region ein Organigramm (M6). Besuchen Sie dafür den jeweiligen Betrieb und erfassen Sie dessen Struktur. Informieren Sie sich bei der Geschäftsleitung, weshalb die jeweilige Aufbauorganisation gewählt wurde. Stellen Sie anschließend Ihr Beispiel vor der Klasse vor.</div>
+  <div class="cards">
+    <div class="card">
+      <h4>1 · Vorbereitung</h4>
+      <div class="check-list">
+        <label><input type="checkbox"> Betrieb in Schulnähe ausgewählt (auch über Kontakte der Eltern)</label>
+        <label><input type="checkbox"> Termin mit der Geschäftsleitung vereinbart</label>
+        <label><input type="checkbox"> Interviewfragen vorbereitet</label>
+        <label><input type="checkbox"> Aufgaben in der Gruppe verteilt</label>
+      </div>
+    </div>
+    <div class="card">
+      <h4>2 · Interviewleitfaden</h4>
+      <ol style="padding-left:18px;margin:0;font-size:.92rem">
+        <li>Welche Abteilungen/Bereiche gibt es?</li>
+        <li>Wer ist wem unterstellt?</li>
+        <li>Gibt es Stabsstellen oder Zentralbereiche?</li>
+        <li>Warum ist Ihr Unternehmen so aufgebaut?</li>
+        <li>Hat sich die Struktur im Laufe der Zeit verändert?</li>
+        <li>Wo liegen Vor- und Nachteile dieser Struktur?</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h4>3 · Präsentation</h4>
+      <div class="check-list">
+        <label><input type="checkbox"> Kurzporträt des Betriebs</label>
+        <label><input type="checkbox"> Organigramm</label>
+        <label><input type="checkbox"> Zuordnung zu einem Grundtyp</label>
+        <label><input type="checkbox"> Begründung der Geschäftsleitung</label>
+        <label><input type="checkbox"> Eigene Bewertung</label>
+      </div>
+    </div>
+  </div>
+  <h3>Organigramm meines Betriebs</h3>
+  <div class="editor" id="editorA13"></div>
+  <h3>Begründung der Geschäftsleitung</h3>
+  <textarea placeholder="Die Geschäftsleitung hat diese Aufbauorganisation gewählt, weil …"></textarea>
+  <details class="loesung"><summary>Lösungshinweis anzeigen</summary><div class="inner">
+    <p>Die praktische Erkundung sollte möglichst in einem Betrieb in der näheren Umgebung der Schule erfolgen. Bei klein- und mittelständischen Unternehmen ist ein Gespräch mit der Geschäftsleitung wahrscheinlicher. Gegebenenfalls können auch Kontakte über Eltern genutzt werden.</p>
+  </div></details>
+</section>
+
+  </main>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- Navigation & Fortschritt ---------- */
+const sections=[...document.querySelectorAll("section.task")];
+const nav=document.getElementById("nav");
+const done=new Set();
+function store(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function load(k){try{return localStorage.getItem(k)}catch(e){return null}}
+try{JSON.parse(load("ao_done")||"[]").forEach(x=>done.add(x))}catch(e){}
+
+sections.forEach((s,i)=>{
+  const b=document.createElement("button");
+  b.type="button";b.dataset.id=s.dataset.id;
+  b.innerHTML=`<span class="num">${s.dataset.id}</span><span class="lbl">${s.dataset.title}</span>`;
+  b.title=s.dataset.title;
+  b.onclick=()=>show(i);
+  nav.appendChild(b);
+  const f=document.createElement("div");f.className="foot-actions";
+  f.innerHTML=`<div class="row" style="margin:0">
+     ${i>0?'<button class="btn" data-go="-1" type="button">← Zurück</button>':''}
+     <button class="btn" data-print type="button">Drucken</button></div>
+     <div class="row" style="margin:0">
+     <button class="btn ok" data-done type="button"></button>
+     ${i<sections.length-1?'<button class="btn primary" data-go="1" type="button">Weiter →</button>':''}</div>`;
+  s.appendChild(f);
+  f.querySelectorAll("[data-go]").forEach(x=>x.onclick=()=>show(i+ +x.dataset.go));
+  f.querySelector("[data-print]").onclick=()=>window.print();
+  const d=f.querySelector("[data-done]");
+  d.onclick=()=>{done.has(s.dataset.id)?done.delete(s.dataset.id):done.add(s.dataset.id);updateProg()};
+});
+let cur=0;
+function show(i){
+  cur=i;
+  sections.forEach((s,j)=>s.classList.toggle("active",j===i));
+  [...nav.children].forEach((b,j)=>b.classList.toggle("active",j===i));
+  nav.children[i].scrollIntoView({block:"nearest",inline:"center"});
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function updateProg(){
+  [...nav.children].forEach(b=>b.classList.toggle("done",done.has(b.dataset.id)));
+  sections.forEach(s=>{const d=s.querySelector("[data-done]");d.textContent=done.has(s.dataset.id)?"✓ Erledigt":"Als erledigt markieren"});
+  document.getElementById("progTxt").textContent=`${done.size} von ${sections.length} erledigt`;
+  document.getElementById("progBar").style.width=(done.size/sections.length*100)+"%";
+  store("ao_done",JSON.stringify([...done]));
+}
+updateProg();show(0);
+
+document.getElementById("themeBtn").onclick=()=>{
+  const r=document.documentElement;
+  const dark=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
+  r.dataset.theme=dark?"light":"dark";
+};
+
+/* Aufdeckkarten */
+document.querySelectorAll(".reveal").forEach(c=>c.onclick=()=>c.classList.toggle("open"));
+
+/* ---------- Organigramm-Renderer ---------- */
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function renderChart(el,root,onClick){
+  const reg=[];
+  function box(n,cls){
+    const id=reg.push(n)-1;
+    return `<div class="node ${cls||""} ${n.cls||""}" data-n="${id}" tabindex="0" role="button">${esc(n.t)}</div>`;
+  }
+  function li(n,depth){
+    let h=`<li>${box(n,depth===0?"root":"")}`;
+    if(n.sub) h+=`<div class="sub ${n.cls==="group"?"zsub":""}">${n.sub.map(s=>box(s,"")).join("")}</div>`;
+    if(n.c&&n.c.length) h+=`<ul>${n.c.map(x=>li(x,depth+1)).join("")}</ul>`;
+    return h+"</li>";
+  }
+  el.innerHTML=`<ul>${li(root,0)}</ul>`;
+  el.querySelectorAll(".node").forEach(d=>{
+    const h=()=>{el.querySelectorAll(".node.sel").forEach(x=>x.classList.remove("sel"));d.classList.add("sel");onClick&&onClick(reg[+d.dataset.n],d)};
+    d.onclick=h;d.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();h()}};
+  });
+}
+
+/* M1 */
+const M1={t:"Geschäftsleitung",i:"<b>Geschäftsleitung</b>: oberste Instanz. Sie trifft die grundlegenden Entscheidungen und hat Weisungsbefugnis gegenüber allen Bereichen.",c:[
+  {t:"Einkauf",i:"<b>Einkauf</b> (Funktionsbereich Beschaffung): besorgt Rohstoffe wie Schlachttiere und Gewürze. Er verwaltet offenbar auch das Kühllager.",sub:[{t:"Beschaffung",i:"<b>Beschaffung</b>: der eigentliche Einkauf von Material und Rohstoffen."},{t:"Kühllager",i:"<b>Kühllager</b>: lagert die verderblichen Rohstoffe. Es ist hier dem Einkauf zugeordnet."}]},
+  {t:"Produktion",i:"<b>Produktion</b>: stellt die Fleischwaren her. Sie ist nach <b>Produktgruppen</b> untergliedert.",sub:[{t:"Klassisch",i:"<b>Klassisch</b>: Produktgruppe konventioneller Fleischwaren."},{t:"Bio",i:"<b>Bio</b>: Produktgruppe biologisch erzeugter Fleischwaren."}]},
+  {t:"Absatz",i:"<b>Absatz</b>: Marketing und Vertrieb. Er gliedert sich in Werbung, Marktforschung sowie Verkauf und Versand.",sub:[{t:"Werbung",i:"<b>Werbung</b>: Teil des Marketings."},{t:"Marktforschung",i:"<b>Marktforschung</b>: untersucht Kundenwünsche und Märkte."},{t:"Verkauf",i:"<b>Verkauf</b>: Teil des eigentlichen Vertriebs."},{t:"Versand",i:"<b>Versand</b>: liefert die Ware an die Kunden aus."}]},
+  {t:"Verwaltung",i:"<b>Verwaltung</b>: steht neben den drei klassischen Bereichen Einkauf, Produktion und Absatz.",sub:[{t:"Buchhaltung",i:"<b>Buchhaltung</b>: erfasst alle Geschäftsvorfälle."},{t:"Personal",i:"<b>Personal</b>: Einstellung, Betreuung und Entwicklung der Mitarbeiter."},{t:"IT",i:"<b>IT</b>: betreut die Informationstechnik des Unternehmens."}]}
+]};
+renderChart(document.getElementById("chartM1"),M1,n=>document.getElementById("infoM1").innerHTML=n.i||esc(n.t));
+
+/* M3 Bauunternehmen */
+const M3={t:"Geschäftsführung",i:"<b>Geschäftsführung</b>: Leitung des Bauunternehmens. Hier noch keine Abweichung, aber schau dir an, was direkt an ihr hängt.",c:[
+  {t:"Personal · Finanzen",dev:1,i:"<b>Abweichung:</b> Personal und Finanzen sind direkt der <b>Geschäftsführung</b> zugeordnet statt der Verwaltung. <b>Grund:</b> Diese wichtigen Bereiche sollen direkt unter der Kontrolle der Unternehmensleitung stehen."},
+  {t:"Auftragsakquisition",dev:1,i:"<b>Abweichung in der Benennung:</b> „Auftragsakquisition“ entspricht weitgehend dem <b>Absatz</b>. <b>Grund:</b> Ein Bauunternehmen fertigt auftragsbezogen, es muss also zuerst Aufträge gewinnen."},
+  {t:"Produktion",dev:1,i:"<b>Abweichung:</b> Die Produktion ist in <b>Hoch- und Tiefbau</b> unterteilt. <b>Grund:</b> Es entstehen völlig unterschiedliche „Produkte“ (Gebäude bzw. Straßen, Kanäle, Leitungen), mit unterschiedlicher Planung, anderen Maschinen und anders qualifizierten Mitarbeitern (Kranführer/Maurer bzw. Walze/Teermaschine).",sub:[{t:"Hochbau",i:"<b>Hochbau</b>: errichtet Gebäude. Wichtig sind Kranführer und Maurer."},{t:"Tiefbau",i:"<b>Tiefbau</b>: baut Straßen, Kanäle und Leitungen. Im Mittelpunkt stehen Walze und Teermaschine."}]},
+  {t:"Kaufmännische Abteilung",dev:1,i:"<b>Abweichung:</b> Die Kaufmännische Abteilung entspricht der Verwaltung, umfasst aber <b>nicht das Personalwesen</b>. „Personal“ ist an die Geschäftsführung ausgelagert, „Aus- und Weiterbildung“ ist ein eigener Zentralbereich."},
+  {t:"Zentralbereiche",cls:"group",dev:1,i:"<b>Abweichung:</b> Es gibt <b>Zentralbereiche</b>, die im idealtypischen Schema nicht vorkommen. <b>Grund:</b> Sie lassen sich keinem Bereich direkt zuordnen und erbringen Leistungen für alle, z. B. wartet die Werkstatt vermutlich alle Maschinen.",sub:[
+    {t:"Aus- und Weiterbildung",i:"<b>Aus- und Weiterbildung</b>: bildet Mitarbeiter für Hoch- und Tiefbau aus."},
+    {t:"Werkstatt",i:"<b>Werkstatt</b>: übernimmt vermutlich Wartungsarbeiten für alle Werkzeuge und Maschinen."},
+    {t:"Baumaschinen",i:"<b>Baumaschinen</b>: stellt den Maschinenpark für alle Baustellen bereit."},
+    {t:"Sanierung und Garantien",i:"<b>Sanierung und Garantien</b>: ein hoch spezialisiertes Team, das Schäden im Hoch- und Tiefbau nachbessert."},
+    {t:"IT",i:"<b>IT</b>: Dienstleistung für alle Bereiche."}]}
+]};
+const foundSet=new Set();
+document.getElementById("foundTotal").textContent=M3.c.filter(x=>x.dev).length;
+renderChart(document.getElementById("chartM3"),M3,(n,d)=>{
+  const p=document.getElementById("infoM3");
+  if(n.dev){foundSet.add(n.t);d.classList.add("found");document.getElementById("foundCount").textContent=foundSet.size;
+    p.innerHTML=n.i+(foundSet.size===M3.c.filter(x=>x.dev).length?"<br><br>🎉 <b>Du hast alle Abweichungen gefunden!</b>":"");}
+  else p.innerHTML=n.i||esc(n.t);
+});
+
+/* M4 Logistik */
+const regSub=()=>[{t:"Akquise und Kalkulation",i:"Funktionsähnliche Gliederung (nach <b>Verrichtung</b>)."},{t:"Auftragsbearbeitung",i:"Funktionsähnliche Gliederung (nach <b>Verrichtung</b>)."},{t:"Disposition",i:"Funktionsähnliche Gliederung (nach <b>Verrichtung</b>): plant Fahrzeuge und Touren."},{t:"Lager",i:"Funktionsähnliche Gliederung (nach <b>Verrichtung</b>)."}];
+const M4={t:"Geschäftsleitung",i:"<b>Geschäftsleitung</b> des Logistik-Dienstleisters.",c:[
+  {t:"GB Regional",i:"<b>Geschäftsbereich Regional</b>: Sparte nach dem <b>räumlichen Kriterium</b>. Darunter folgt eine funktionsähnliche Gliederung.",sub:regSub()},
+  {t:"GB National",i:"<b>Geschäftsbereich National</b>: Sparte nach dem <b>räumlichen Kriterium</b>. Darunter folgt eine funktionsähnliche Gliederung.",sub:regSub()},
+  {t:"GB International",i:"<b>Geschäftsbereich International</b>: zusätzlich nach dem <b>Transportmedium</b> unterschieden, weil detaillierte Kenntnisse der jeweiligen Gegebenheiten nötig sind.",sub:[{t:"Schwertransport",i:"Transportmedium <b>Lkw</b>."},{t:"Verschiffung",i:"Transportmedium <b>Containerschiff</b>."},{t:"Luftfracht",i:"Transportmedium <b>Flugzeug</b>."}]},
+  {t:"Zentralbereiche",cls:"group",i:"<b>Zentralbereiche</b>: arbeiten bereichsübergreifend und sind daher nicht an eine einzelne Sparte gekoppelt.",sub:[{t:"EDV und Datenschutz",i:"Bereichsübergreifende Dienstleistung."},{t:"Qualitätsmanagement",i:"Bereichsübergreifende Dienstleistung."},{t:"Technische Dienste",i:"Bereichsübergreifende Dienstleistung."},{t:"Rechtsabteilung",i:"Bereichsübergreifende Dienstleistung."}]}
+]};
+renderChart(document.getElementById("chartM4"),M4,n=>document.getElementById("infoM4").innerHTML=n.i||esc(n.t));
+
+/* Projektorganisation Schema */
+renderChart(document.getElementById("chartProj"),{t:"Geschäftsleitung",c:[{t:"Projekt A",sub:[{t:"Team A"}]},{t:"Projekt B",sub:[{t:"Team B"}]},{t:"Projekt C",sub:[{t:"Team C"}]}]},null);
+
+/* ---------- Sortierübung ---------- */
+function sorter(el,buckets,items,note){
+  const shuffle=a=>a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(x=>x[1]);
+  el.innerHTML=`<div class="pool" data-b="pool"></div><div class="buckets">${buckets.map((b,i)=>`<div class="bucket-wrap"><h4>${b}</h4><div class="bucket" data-b="${i}"></div></div>`).join("")}</div>
+   <div class="row"><button class="btn primary" type="button" data-check>Prüfen</button><button class="btn" type="button" data-reset>Zurücksetzen</button><span class="feedback" data-fb></span></div>`;
+  const pool=el.querySelector(".pool");let sel=null;
+  function build(){pool.innerHTML="";el.querySelectorAll(".bucket").forEach(b=>b.innerHTML="");
+    el.querySelector("[data-fb]").textContent="";
+    shuffle(items).forEach(it=>{const c=document.createElement("span");c.className="chip";c.textContent=it[0];c.dataset.a=it[1];c.draggable=true;
+      c.onclick=e=>{e.stopPropagation();if(sel===c){c.classList.remove("selected");sel=null;return}sel&&sel.classList.remove("selected");sel=c;c.classList.add("selected")};
+      c.ondragstart=e=>{sel=c;e.dataTransfer.setData("text/plain","x")};
+      pool.appendChild(c)});}
+  el.querySelectorAll("[data-b]").forEach(z=>{
+    z.onclick=()=>{if(sel){z.appendChild(sel);sel.classList.remove("selected","right","wrong");sel=null}};
+    z.ondragover=e=>{e.preventDefault();z.classList.add("target")};
+    z.ondragleave=()=>z.classList.remove("target");
+    z.ondrop=e=>{e.preventDefault();z.classList.remove("target");if(sel){z.appendChild(sel);sel.classList.remove("selected","right","wrong");sel=null}};
+  });
+  el.querySelector("[data-reset]").onclick=build;
+  el.querySelector("[data-check]").onclick=()=>{
+    let r=0,placed=0;
+    el.querySelectorAll(".bucket").forEach(b=>b.querySelectorAll(".chip").forEach(c=>{placed++;const ok=c.dataset.a===b.dataset.b;c.classList.toggle("right",ok);c.classList.toggle("wrong",!ok);if(ok)r++}));
+    const fb=el.querySelector("[data-fb]");
+    fb.className="feedback "+(r===items.length?"good":"bad");
+    fb.innerHTML=r===items.length?"Alles richtig! 🎉"+(note?` <span class="hint">${note}</span>`:""):`${r} von ${items.length} richtig${placed<items.length?` (noch ${items.length-placed} nicht zugeordnet)`:""}. Rot markierte Begriffe noch einmal verschieben.`;
+  };
+  build();
+}
+sorter(document.getElementById("sortA1"),["Einkauf","Produktion","Absatz","Verwaltung"],
+  [["Beschaffung","0"],["Kühllager","0"],["Klassisch","1"],["Bio","1"],["Werbung","2"],["Marktforschung","2"],["Verkauf","2"],["Versand","2"],["Buchhaltung","3"],["Personal","3"],["IT","3"]]);
+sorter(document.getElementById("sortA2"),["Beschaffung","Produktion","Absatz","Leitung & Verwaltung"],
+  [["Einkauf","0"],["Beschaffung","0"],["Fertigung","1"],["Produktion","1"],["Forschung und Entwicklung","1"],["Vertrieb","2"],["Marketing","2"],["Absatz","2"],["Unternehmensleitung","3"],["Management","3"],["Controlling","3"],["Rechnungswesen","3"],["Buchhaltung","3"],["Finanzen","3"],["Personalwesen","3"]],
+  "F&E wird oft auch als eigener Bereich geführt.");
+sorter(document.getElementById("sortA10"),["✔ Das leistet ein Organigramm","✘ Das zeigt es nicht (Grenzen)"],
+  [["Hierarchie und Weisungswege auf einen Blick","0"],["Aufgabenverteilung zwischen den Bereichen","0"],["Information für Bewerber und Investoren","0"],["Grundlage, um Abläufe zu erfassen und zu verbessern","0"],
+   ["Der Kunde als wichtigster Bezugspunkt","1"],["Einzelne Mitarbeiter und ihre genauen Zuständigkeiten","1"],["Aktueller Stand in dynamischen Unternehmen","1"],["Details bei sehr großen Unternehmen (starke Vereinfachung)","1"],["Informelle Kommunikationswege","1"]]);
+
+/* ---------- Quiz ---------- */
+function quiz(el,qs){
+  el.innerHTML=qs.map((q,i)=>`<div class="q"><p><b>${i+1}.</b> ${q.q}</p><div class="opts">${q.o.map((o,j)=>`<button type="button" class="opt" data-q="${i}" data-o="${j}">${o}</button>`).join("")}</div><div class="explain" hidden></div></div>`).join("");
+  el.querySelectorAll(".opt").forEach(b=>b.onclick=()=>{
+    const q=qs[+b.dataset.q],ok=+b.dataset.o===q.a,box=b.closest(".q");
+    box.querySelectorAll(".opt").forEach(x=>x.classList.remove("right","wrong"));
+    b.classList.add(ok?"right":"wrong");
+    const ex=box.querySelector(".explain");ex.hidden=false;ex.innerHTML=(ok?"✔ Richtig. ":"✘ Noch nicht. ")+(ok?q.e:"Versuch es noch einmal.");
+  });
+}
+const A3o=["Entscheidungskompetenz","Informations-/Kommunikationsweg","Aufgabenverteilung"];
+quiz(document.getElementById("quizA3"),[
+  {q:"Niemand im Betrieb weiß, wer über den Kauf einer teuren neuen Maschine entscheiden darf. Die Anschaffung verzögert sich um Monate.",o:A3o,a:0,e:"Die Aufbauorganisation legt fest, welche Instanz für welche Entscheidungen zuständig ist."},
+  {q:"Der Vertrieb erfährt nicht, dass die Produktion eine Woche stillsteht, und sagt Kunden feste Liefertermine zu.",o:A3o,a:1,e:"Es muss geregelt sein, wer welche Informationen erhält oder weiterleiten muss."},
+  {q:"Zwei Mitarbeiter aus verschiedenen Abteilungen bestellen unabhängig voneinander dieselben Rohstoffe.",o:A3o,a:2,e:"Klare Zuständigkeiten (Stellen und Abteilungen) verhindern Doppelarbeit."}
+]);
+const yn=["Geeignet","Eher nicht"];
+quiz(document.getElementById("quizA6"),[
+  {q:"Rechtsabteilung",o:yn,a:0,e:"Rechtsfragen fallen in allen Bereichen an, also eine Querschnittsfunktion."},
+  {q:"Verkauf von Bio-Produkten",o:yn,a:1,e:"Er betrifft nur eine Produktgruppe bzw. Sparte und gehört daher in die Linie."},
+  {q:"IT / EDV",o:yn,a:0,e:"Alle Bereiche nutzen die IT, also eine typische Querschnittsfunktion."},
+  {q:"Montage im Hochbau",o:yn,a:1,e:"Das ist eine Kernaufgabe genau eines Bereichs."},
+  {q:"Personalwesen",o:yn,a:0,e:"Es beschafft qualifizierte Mitarbeiter für alle Bereiche."}
+]);
+
+/* ---------- A4 Tabelle ---------- */
+const tb4=document.querySelector("#tblA4 tbody");
+function addRow4(){
+  const tr=document.createElement("tr");
+  tr.innerHTML=`<td><input type="text" placeholder="Name"></td><td><input type="text" placeholder="z. B. Handwerk, 40 MA"></td>`+
+   ["","","",""].map(()=>`<td style="text-align:center"><input type="checkbox"></td>`).join("")+
+   `<td><select><option>–</option><option>ja</option><option>teilweise</option><option>nein</option></select></td><td class="no-print"><button class="btn" type="button" aria-label="Zeile löschen">✕</button></td>`;
+  tr.querySelector("button").onclick=()=>tr.remove();
+  tb4.appendChild(tr);
+}
+addRow4();addRow4();
+document.getElementById("addA4").onclick=addRow4;
+document.getElementById("csvA4").onclick=()=>{
+  const rows=[["Unternehmen","Branche/Größe","Einkauf","Produktion","Absatz","Verwaltung","Ähnlich wie M1"]];
+  tb4.querySelectorAll("tr").forEach(tr=>{const t=tr.querySelectorAll("input[type=text]"),c=tr.querySelectorAll("input[type=checkbox]");
+    rows.push([t[0].value,t[1].value,...[...c].map(x=>x.checked?"ja":"nein"),tr.querySelector("select").value])});
+  const csv="﻿"+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(";")).join("\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="Unternehmen_Region.csv";a.click();
+};
+
+/* ---------- A7 Vergleich ---------- */
+const A7=[
+  ["Organisationsform","Funktionale Organisation (Gliederung nach Verrichtungen)","Divisionale Organisation / Spartenorganisation (Gliederung nach Objekten bzw. Geschäftsfeldern)"],
+  ["2. Hierarchieebene","Einkauf, Produktion, Absatz, Verwaltung","Vier Hauptgeschäftsfelder (siehe M2)"],
+  ["Zentralbereiche","Keine; Querschnittsaufgaben liegen in der Verwaltung","Finanzen, Entwicklung, Market &amp; Technology"],
+  ["Unternehmen","Mittelständisch, recht einheitliches Produktprogramm (Fleischwaren)","Aktiengesellschaft mit mehreren unterschiedlichen Geschäftsfeldern und Märkten"],
+  ["Vorteile der Struktur","Spezialisierung, klare Zuständigkeiten, kurze Wege, keine doppelten Abteilungen","Marktnähe, Sparten tragen eigene Ergebnisverantwortung, Entlastung des Vorstands, flexible Reaktion auf Märkte"],
+  ["Mögliche Nachteile","Hoher Abstimmungsbedarf zwischen den Bereichen, Leitung schnell überlastet, wenn das Programm wächst","Gefahr von Doppelarbeit (daher Zentralbereiche), höherer Bedarf an Führungskräften"],
+  ["Warum passt die Struktur?","Bei homogenem Programm lohnt sich die Bündelung gleicher Tätigkeiten","Heterogene Geschäftsfelder verlangen spezielles Markt- und Produktwissen je Sparte"]
+];
+const tb7=document.querySelector("#tblA7 tbody");
+A7.forEach(r=>{const tr=document.createElement("tr");
+  tr.innerHTML=`<th>${r[0]}</th>`+r.slice(1).map(v=>`<td class="cell-reveal" data-v="${v.replace(/"/g,"&quot;")}">? Aufdecken</td>`).join("");
+  tb7.appendChild(tr)});
+tb7.querySelectorAll(".cell-reveal").forEach(td=>td.onclick=()=>{if(!td.classList.contains("open")){td.innerHTML=td.dataset.v;td.classList.add("open")}});
+
+/* ---------- A9 Kriterien ---------- */
+const crits=["räumlich (Region)","Verrichtung (Funktion)","Objekt: Transportmittel","Querschnitt (Zentralbereich)"];
+const A9=[["Ebene 1: GB Regional · National · International",0],["Unter Regional/National: Akquise, Auftragsbearbeitung, Disposition, Lager",1],["Unter International: Schwertransport, Verschiffung, Luftfracht",2],["EDV, Qualitätsmanagement, Technische Dienste, Rechtsabteilung",3]];
+const c9=document.getElementById("critA9");
+c9.innerHTML=A9.map((r,i)=>`<div class="row"><span style="flex:1 1 260px">${r[0]}</span><select style="flex:1 1 220px;width:auto" data-i="${i}"><option value="">– bitte wählen –</option>${crits.map((c,j)=>`<option value="${j}">${c}</option>`).join("")}</select></div>`).join("");
+document.getElementById("checkA9").onclick=()=>{let r=0;c9.querySelectorAll("select").forEach(s=>{const ok=+s.value===A9[+s.dataset.i][1]&&s.value!=="";s.style.borderColor=ok?"var(--ok)":"var(--bad)";if(ok)r++});
+  const f=document.getElementById("fbA9");f.className="feedback "+(r===4?"good":"bad");f.textContent=r===4?"Alles richtig! Hier werden mehrere Gliederungskriterien kombiniert.":`${r} von 4 richtig.`};
+
+/* ---------- A11 Zuordnung ---------- */
+const types=["funktional","divisional","Projektorganisation","Matrixorganisation"];
+const A11=[["Fleischproduzent (M1)",0,"Funktionale Organisation: Gliederung nach Einkauf, Produktion, Absatz, Verwaltung."],["Fluid Engineering AG (M2)",1,"Divisionale Organisation nach Geschäftsfeldern, mit mehreren Zentralbereichen."],["Bauunternehmen (M3)",0,"An die funktionale Organisation angelehnt: Auftragsakquisition ≈ Absatz, Produktion, Kaufmännische Abteilung ≈ Verwaltung."],["Logistik-Dienstleister (M4)",1,"An die divisionale Organisation angelehnt: Sparten nach Regionen."]];
+const tb11=document.querySelector("#tblA11 tbody");
+A11.forEach((r,i)=>{const tr=document.createElement("tr");
+  tr.innerHTML=`<td><b>${r[0]}</b></td><td><select data-i="${i}"><option value="">– wählen –</option>${types.map((t,j)=>`<option value="${j}">${t}</option>`).join("")}</select><div class="explain" hidden></div></td><td><input type="text" placeholder="weil …"></td>`;
+  tb11.appendChild(tr)});
+document.getElementById("checkA11").onclick=()=>{let r=0;tb11.querySelectorAll("select").forEach(s=>{const d=A11[+s.dataset.i],ok=s.value!==""&&+s.value===d[1];s.style.borderColor=ok?"var(--ok)":"var(--bad)";const ex=s.nextElementSibling;ex.hidden=!ok;ex.textContent=d[2];if(ok)r++});
+  const f=document.getElementById("fbA11");f.className="feedback "+(r===4?"good":"bad");f.textContent=r===4?"Alles richtig! Keines der Unternehmen ist nach Aufträgen oder mehrdimensional organisiert, siehe Aufgabe 12.":`${r} von 4 richtig.`};
+
+/* ---------- Organigramm-Editor ---------- */
+function editor(el,rootName,seed){
+  let nodes=seed?seed.slice():[{id:0,name:rootName,parent:null,type:"linie"}];let nid=100;
+  el.innerHTML=`<div class="editor-grid"><div>
+     <label class="hint">Bezeichnung</label><input type="text" data-name placeholder="z. B. Vertrieb">
+     <div class="row"><select data-parent style="flex:1"></select></div>
+     <div class="row"><label><input type="radio" name="t${el.id}" value="linie" checked> Linienbereich</label><label><input type="radio" name="t${el.id}" value="zentral"> Zentralbereich</label></div>
+     <div class="row"><button class="btn primary" type="button" data-add>+ Hinzufügen</button><button class="btn" type="button" data-clear>Neu beginnen</button></div>
+     <ul class="node-list" data-list></ul>
+     <p class="hint">Tipp: Klicke im Organigramm auf ein Kästchen, um es als übergeordnete Stelle auszuwählen.</p>
+   </div><div><div class="legend"><span>Linienbereich</span><span class="z">Zentralbereich</span></div><div class="chart-wrap"><div class="tree" data-chart></div></div></div></div>`;
+  const $=s=>el.querySelector(s);
+  function tree(id){const n=nodes.find(x=>x.id===id);const kids=nodes.filter(x=>x.parent===id);
+    return {t:n.name,id:n.id,cls:n.type==="zentral"?"zentral":"",c:kids.map(k=>tree(k.id))};}
+  function draw(){
+    const sp=$("[data-parent]"),prev=sp.value;
+    sp.innerHTML=nodes.map(n=>`<option value="${n.id}">untergeordnet: ${esc(n.name)}</option>`).join("");
+    if(nodes.some(n=>String(n.id)===prev))sp.value=prev;
+    $("[data-list]").innerHTML=nodes.map(n=>{const p=nodes.find(x=>x.id===n.parent);return `<li><span>${esc(n.name)}${p?` <span class="hint">← ${esc(p.name)}</span>`:""}${n.type==="zentral"?" <span class='hint'>(Z)</span>":""}</span>${n.parent===null?"":`<button type="button" data-del="${n.id}" aria-label="Löschen">✕</button>`}</li>`}).join("");
+    el.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{const kill=new Set([+b.dataset.del]);let ch=true;while(ch){ch=false;nodes.forEach(n=>{if(!kill.has(n.id)&&kill.has(n.parent)){kill.add(n.id);ch=true}})}nodes=nodes.filter(n=>!kill.has(n.id));draw()});
+    renderChart($("[data-chart]"),tree(nodes[0].id),n=>{sp.value=n.id;$("[data-name]").focus()});
+  }
+  function add(){const name=$("[data-name]").value.trim();if(!name)return;
+    nodes.push({id:nid++,name,parent:+$("[data-parent]").value,type:el.querySelector(`input[name=t${el.id}]:checked`).value});
+    $("[data-name]").value="";draw();}
+  $("[data-add]").onclick=add;$("[data-name]").onkeydown=e=>{if(e.key==="Enter")add()};
+  $("[data-clear]").onclick=()=>{if(confirm("Organigramm wirklich zurücksetzen?")){nodes=[{id:0,name:rootName,parent:null,type:"linie"}];draw()}};
+  draw();
+  return {set(list){nodes=list.slice();draw()}};
+}
+const edA5=editor(document.getElementById("editorA5"),"Vorstand");
+editor(document.getElementById("editorA13"),"Geschäftsleitung");
+document.getElementById("loadSkeleton").onclick=()=>{
+  edA5.set([{id:0,name:"Vorstand",parent:null,type:"linie"},
+   {id:1,name:"Finanzen",parent:0,type:"zentral"},{id:2,name:"Entwicklung",parent:0,type:"zentral"},{id:3,name:"Market & Technology",parent:0,type:"zentral"},
+   {id:4,name:"Geschäftsfeld 1 (Name aus M2)",parent:0,type:"linie"},{id:5,name:"Geschäftsfeld 2 (Name aus M2)",parent:0,type:"linie"},
+   {id:6,name:"Geschäftsfeld 3 (Name aus M2)",parent:0,type:"linie"},{id:7,name:"Geschäftsfeld 4 (Name aus M2)",parent:0,type:"linie"}]);
+};
+})();
+</script>
+</body>
+</html>
